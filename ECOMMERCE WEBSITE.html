@@ -1,0 +1,262 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple E-Commerce Website</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <header class="bg-blue-600 text-white p-4 text-center flex justify-between items-center">
+    <h1 class="text-2xl font-bold">My E-Commerce Store</h1>
+    <div>
+      <button onclick="showLogin()" class="bg-green-500 text-white px-4 py-2 rounded mr-2">Login</button>
+      <button onclick="showRegister()" class="bg-purple-500 text-white px-4 py-2 rounded mr-2">Register</button>
+      <button onclick="viewCart()" class="bg-yellow-500 text-black px-4 py-2 rounded">Cart (<span id="cart-count">0</span>)</button>
+    </div>
+  </header>
+
+  <main class="container mx-auto p-4">
+    <!-- Login Page -->
+    <div id="login-page" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center">
+      <div class="bg-white p-6 rounded-lg w-11/12 md:w-1/3">
+        <h2 class="text-xl font-bold mb-4">Login</h2>
+        <div class="mb-4">
+          <label class="block text-gray-700">Username</label>
+          <input id="login-username" type="text" class="w-full p-2 border rounded">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700">Password</label>
+          <input id="login-password" type="password" class="w-full p-2 border rounded">
+        </div>
+        <div class="flex justify-end">
+          <button onclick="closeLogin()" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Close</button>
+          <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registration Page -->
+    <div id="register-page" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center">
+      <div class="bg-white p-6 rounded-lg w-11/12 md:w-1/3">
+        <h2 class="text-xl font-bold mb-4">Register</h2>
+        <div class="mb-4">
+          <label class="block text-gray-700">Username</label>
+          <input id="register-username" type="text" class="w-full p-2 border rounded">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700">Email</label>
+          <input id="register-email" type="email" class="w-full p-2 border rounded">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700">Password</label>
+          <input id="register-password" type="password" class="w-full p-2 border rounded">
+        </div>
+        <div class="flex justify-end">
+          <button onclick="closeRegister()" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Close</button>
+          <button onclick="register()" class="bg-purple-500 text-white px-4 py-2 rounded">Register</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catalog Page -->
+    <div id="catalog-page">
+      <h2 class="text-xl font-bold mb-4">Product Catalog</h2>
+      <div id="products" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- Cart Page (Modal) -->
+    <div id="cart-modal" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center">
+      <div class="bg-white p-6 rounded-lg w-11/12 md:w-1/2">
+        <h2 class="text-xl font-bold mb-4">Your Cart</h2>
+        <div id="cart-items" class="mb-4"></div>
+        <p class="font-bold">Total: $<span id="cart-total">0</span></p>
+        <div class="flex justify-end mt-4">
+          <button onclick="closeCart()" class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Close</button>
+          <button onclick="checkout()" class="bg-green-500 text-white px-4 py-2 rounded">Checkout</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const products = [
+      { id: 1, name: "Laptop", price: 999, image: "https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=150&h=150&fit=crop" },
+      { id: 2, name: "Headphones", price: 99, image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150&h=150&fit=crop" },
+      { id: 3, name: "Smartphone", price: 699, image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=150&h=150&fit=crop" }
+    ];
+
+    let cart = [];
+    let users = JSON.parse(localStorage.getItem('users')) || [];
+    let loggedInUser = null;
+
+    function displayProducts() {
+      const productsDiv = document.getElementById('products');
+      productsDiv.innerHTML = '';
+      products.forEach(product => {
+        const productCard = `
+          <div class="bg-white p-4 rounded-lg shadow-md">
+            <img src="${product.image}" alt="${product.name}" class="w-full h-40 object-cover rounded">
+            <h3 class="text-lg font-semibold mt-2">${product.name}</h3>
+            <p class="text-gray-600">$${product.price}</p>
+            <button onclick="addToCart(${product.id})" class="bg-blue-500 text-white px-4 py-2 mt-2 rounded">Add to Cart</button>
+          </div>
+        `;
+        productsDiv.innerHTML += productCard;
+      });
+    }
+
+    function addToCart(productId) {
+      if (!loggedInUser) {
+        alert("Please log in to add items to your cart!");
+        showLogin();
+        return;
+      }
+      const product = products.find(p => p.id === productId);
+      cart.push(product);
+      updateCartCount();
+      alert(`${product.name} added to cart!`);
+    }
+
+    function updateCartCount() {
+      document.getElementById('cart-count').textContent = cart.length;
+    }
+
+    function viewCart() {
+      if (!loggedInUser) {
+        alert("Please log in to view your cart!");
+        showLogin();
+        return;
+      }
+      const cartModal = document.getElementById('cart-modal');
+      const cartItemsDiv = document.getElementById('cart-items');
+      const cartTotalSpan = document.getElementById('cart-total');
+      
+      cartItemsDiv.innerHTML = '';
+      let total = 0;
+      
+      cart.forEach((item, index) => {
+        cartItemsDiv.innerHTML += `
+          <div class="flex justify-between mb-2">
+            <span>${item.name} - $${item.price}</span>
+            <button onclick="removeFromCart(${index})" class="text-red-500">Remove</button>
+          </div>
+        `;
+        total += item.price;
+      });
+      
+      cartTotalSpan.textContent = total;
+      cartModal.classList.remove('hidden');
+    }
+
+    function removeFromCart(index) {
+      cart.splice(index, 1);
+      updateCartCount();
+      viewCart();
+    }
+
+    function closeCart() {
+      document.getElementById('cart-modal').classList.add('hidden');
+    }
+
+    function checkout() {
+      if (cart.length === 0) {
+        alert("Your cart is empty!");
+        return;
+      }
+      alert("Thank you for your purchase!");
+      cart = [];
+      updateCartCount();
+      closeCart();
+    }
+
+    function showLogin() {
+      document.getElementById('login-page').classList.remove('hidden');
+    }
+
+    function closeLogin() {
+      document.getElementById('login-page').classList.add('hidden');
+    }
+
+    function login() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const user = users.find(u => u.username === username && u.password === password);
+      
+      if (user) {
+        loggedInUser = username;
+        alert("Login successful!");
+        closeLogin();
+      } else {
+        alert("Invalid username or password!");
+      }
+    }
+
+    function showRegister() {
+      document.getElementById('register-page').classList.remove('hidden');
+    }
+
+    function closeRegister() {
+      document.getElementById('register-page').classList.add('hidden');
+    }
+
+    function register() {
+      const username = document.getElementById('register-username').value;
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+
+      if (users.find(u => u.username === username)) {
+        alert("Username already exists!");
+        return;
+      }
+
+      users.push({ username, email, password });
+      localStorage.setItem('users', JSON.stringify(users));
+      alert("Registration successful! Please log in.");
+      closeRegister();
+      showLogin();
+    }
+
+    displayProducts();
+  </script>
+</body>
+</html>
