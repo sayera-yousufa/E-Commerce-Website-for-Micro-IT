@@ -33,7 +33,7 @@ Open `index.html` in a web browser to run the website locally.
 *The product catalog displaying available items with images.*
 
 - **Cart Modal**
-
+<img width="479" alt="Image" src="https://github.com/user-attachments/assets/280a03fd-d2a3-489e-8954-38a453159593" />
 
 *The cart modal showing selected items and total.*
 
