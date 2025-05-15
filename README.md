@@ -28,14 +28,18 @@ Open `index.html` in a web browser to run the website locally.
 
 ## Screenshots
 - **Product Catalog**  
- 
+ <img width="959" alt="Image" src="https://github.com/user-attachments/assets/5613c18e-e014-447f-a1bf-054f9acfd196" />
+
 *The product catalog displaying available items with images.*
 
-- **Cart Modal**  
+- **Cart Modal**
+
 
 *The cart modal showing selected items and total.*
 
-- **Login Page**  
+- **Login Page**
+  
+<img width="346" alt="Image" src="https://github.com/user-attachments/assets/bd1ca7b2-85b0-421b-b236-96c851a313e5" />
 
 *The login modal for user authentication.*
 
